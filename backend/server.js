@@ -1,96 +1,108 @@
-import presignRouter from "./presign.js";
-// server.js — Gonggu API (ESM)
+// ------------------------------------------------------
+// Gonggu Server - Express Entry
+// Env-based CORS (Hybrid Preflight) + Flush Logs + Helmet
+// ------------------------------------------------------
 
 import express from "express";
-import cors from "cors";
 import helmet from "helmet";
-import dotenv from "dotenv";
-import pkg from "pg";
-import Redis from "ioredis";
-import { Client as MinioClient } from "minio";
-
-dotenv.config();
+import cors from "cors";
+import presignRouter from "./presignRouter.js";
+import authRouter from "./authRouter.js";
 
 const app = express();
 
-app.use(cors());
-app.use(
-  helmet({
-    crossOriginResourcePolicy: { policy: "same-origin" },
-  })
-);
+// ✅ 환경 감지
+const ENV = process.env.NODE_ENV || "development";
+
+// ✅ ALLOWED_ORIGINS: 쉼표로 구분된 오리진 목록
+// 예) http://localhost:5173,https://uconcreative.ddns.net
+const parseOrigins = (val) =>
+  (val || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+const dynamic = parseOrigins(process.env.ALLOWED_ORIGINS);
+const fallbackDev = [
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+];
+
+// ENV=production에서 ALLOWED_ORIGINS가 비면 빈 리스트(차단)
+const whitelist =
+  dynamic.length > 0
+    ? dynamic
+    : ENV === "production"
+    ? []
+    : fallbackDev;
+
+// ✅ [핵심] 프리플라이트(OPTIONS) 최우선 하이브리드 처리
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  const allowed = origin && whitelist.includes(origin);
+
+  if (allowed) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    // 프록시/캐시 환경 대비
+    const existingVary = res.getHeader("Vary");
+    res.setHeader("Vary", existingVary ? `${existingVary}, Origin` : "Origin");
+  }
+
+  if (req.method === "OPTIONS") {
+    const reqMethod = req.headers["access-control-request-method"];
+    const reqHeaders =
+      req.headers["access-control-request-headers"] || "Content-Type, Authorization";
+
+    if (allowed) {
+      if (reqMethod) res.setHeader("Access-Control-Allow-Methods", String(reqMethod));
+      res.setHeader("Access-Control-Allow-Headers", String(reqHeaders));
+      res.setHeader("Access-Control-Max-Age", "600");
+    }
+    // 허용 여부와 무관하게 서버 에러 없이 204로 응답 (브라우저가 CORS 정책으로 판단)
+    return res.sendStatus(204);
+  }
+
+  return next();
+});
+
+// ✅ 보안 헤더 (프리플라이트 처리 이후 적용)
+app.use(helmet());
+
+// ✅ JSON 파서
 app.use(express.json());
 
-const PORT = +(process.env.PORT || 3000);
-const HOST = process.env.HOST || "0.0.0.0";
+// ✅ cors 패키지 (일반 요청용). 비허용은 서버에러가 아니라 CORS 차단.
+const corsOptions = {
+  origin(origin, cb) {
+    if (!origin) return cb(null, true); // 서버-서버/CLI 허용
+    const ok = whitelist.includes(origin);
+    return cb(null, ok); // true 허용, false 차단(브라우저에서 막힘)
+  },
+  credentials: true,
+};
+app.use(cors(corsOptions));
+// 안전망: 명시적 프리플라이트 핸들러
+app.options("*", cors(corsOptions));
 
-// PostgreSQL
-const pgClient = new pkg.Client({
-  host: process.env.PG_HOST || "db",
-  port: +(process.env.PG_PORT || 5432),
-  user: process.env.PG_USER || "gonggu",
-  password: process.env.PG_PASSWORD || "gonggu123",
-  database: process.env.PG_DB || "gonggu",
-});
-pgClient.connect().catch((e) => console.error("[pg] connect error:", e?.message || e));
+// ✅ 상태 로그 (즉시 flush)
+const log = (m) => process.stdout.write(m + "\n");
+log("------------------------------------------------------");
+log(`🌐 MODE: ${ENV}`);
+log(`🔐 CORS whitelist (${whitelist.length}): ${whitelist.join(", ") || "(empty)"}`);
+log("------------------------------------------------------");
 
-// Redis
-const redis = new Redis({
-  host: process.env.REDIS_HOST || "redis",
-  port: +(process.env.REDIS_PORT || 6379),
-});
+// ✅ 헬스 체크
+app.get("/healthz", (_req, res) => res.send("OK"));
 
-// MinIO
-const minio = new MinioClient({
-  endPoint: process.env.MINIO_HOST || "minio",
-  port: +(process.env.MINIO_PORT || 9000),
-  useSSL: process.env.MINIO_USE_SSL === "true",
-  accessKey: process.env.MINIO_ACCESS_KEY || "admin",
-  secretKey: process.env.MINIO_SECRET_KEY || "admin123",
-});
-
-// ---- Liveness (항상 200 OK) ----
-app.get("/healthz", (_req, res) => {
-  res.type("text/plain").status(200).send("OK");
-});
-
-// ---- Readiness (DB, Redis, MinIO 점검) ----
-app.get("/readyz", async (_req, res) => {
-  const checks = {};
-  let ok = true;
-
-  try {
-    await pgClient.query("SELECT 1");
-    checks.postgres = true;
-  } catch (e) {
-    ok = false;
-    checks.postgres = String(e?.message || e);
-  }
-
-  try {
-    await redis.ping();
-    checks.redis = true;
-  } catch (e) {
-    ok = false;
-    checks.redis = String(e?.message || e);
-  }
-
-  try {
-    await minio.listBuckets();
-    checks.minio = true;
-  } catch (e) {
-    ok = false;
-    checks.minio = String(e?.message || e);
-  }
-
-  res.status(ok ? 200 : 503).json({ ok, checks });
-});
-
-// ---- 테스트용 홈 ----
-app.get("/", (_req, res) => res.status(200).send("Gonggu API is live"));
-
-// ---- 서버 시작 ----
+// ✅ 라우터
+app.use(authRouter);
 app.use(presignRouter);
-app.listen(PORT, HOST, () => {
-  console.log(`✅ API running on http://${HOST}:${PORT}`);
+
+// ✅ 서버 실행
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`✅ Gonggu API running on http://0.0.0.0:${PORT}`);
 });
