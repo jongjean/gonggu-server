@@ -7,7 +7,7 @@ services:
       redis:
         condition: service_healthy
       minio:
-        condition: service_started   # MinIO는 healthcheck 제거
+        condition: service_started     # ← MinIO는 healthcheck 제거했으므로 started만 확인
     env_file:
       - ./backend/.env
     environment:
@@ -16,6 +16,7 @@ services:
       - "3000:3000"
     restart: unless-stopped
     healthcheck:
+      # backend 컨테이너는 Dockerfile에서 curl을 설치했음
       test: ["CMD-SHELL", "curl -fsS http://localhost:3000/healthz >/dev/null || exit 1"]
       interval: 10s
       timeout: 3s
@@ -34,6 +35,7 @@ services:
     ports:
       - "5432:5432"
     healthcheck:
+      # postgres 이미지는 pg_isready 제공
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB -h 127.0.0.1 || exit 1"]
       interval: 10s
       timeout: 5s
@@ -52,7 +54,7 @@ services:
     ports:
       - "9000:9000"
       - "9001:9001"
-    # healthcheck 없음
+    # healthcheck 제거 (이미지에 wget/curl 없음)
 
   redis:
     image: redis:7

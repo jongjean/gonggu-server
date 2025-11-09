@@ -12,5 +12,11 @@
     "ioredis": "^5.4.1",
     "minio": "^8.0.0",
     "pg": "^8.13.1"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }
