@@ -1,3 +1,4 @@
+import presignRouter from "./presign.js";
 // server.js — Gonggu API (ESM)
 
 import express from "express";
