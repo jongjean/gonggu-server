@@ -89,6 +89,7 @@ app.get("/readyz", async (_req, res) => {
 app.get("/", (_req, res) => res.status(200).send("Gonggu API is live"));
 
 // ---- 서버 시작 ----
+app.use(presignRouter);
 app.listen(PORT, HOST, () => {
   console.log(`✅ API running on http://${HOST}:${PORT}`);
 });
