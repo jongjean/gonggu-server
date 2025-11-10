@@ -10,14 +10,6 @@ import presignRouter from "./presignRouter.js";
 import authRouter from "./authRouter.js";
 
 const app = express();
-// ✅ 헬스 체크
-app.use("/healthz", (req,res,next)=>{
-  res.header("Access-Control-Allow-Origin","https://uconcreative.ddns.net");
-  res.header("Vary","Origin");
-  next();
-});
-app.get("/healthz", (_req, res) => res.send("OK"));
-
 app.use(express.static('/app/public'));
 
 // ✅ 환경 감지
@@ -103,6 +95,9 @@ log(`🌐 MODE: ${ENV}`);
 log(`🔐 CORS whitelist (${whitelist.length}): ${whitelist.join(", ") || "(empty)"}`);
 log("------------------------------------------------------");
 
+// ✅ 헬스 체크
+app.get("/healthz", (_req, res) => res.send("OK"));
+
 // ✅ 라우터
 app.use(authRouter);
 app.use(presignRouter);
@@ -110,7 +105,6 @@ app.use(presignRouter);
 // ✅ 서버 실행
 const PORT = process.env.PORT || 3000;
 app.get('/', (_req,res)=>res.sendFile('/app/public/index.html'));
-app.get('/readyz', async (_req, res) => {  const checks = {}; let ok = true;  try { await pgClient.query('SELECT 1'); checks.postgres = true; }  catch (e) { ok = false; checks.postgres = String(e?.message || e); }  try { await redis.ping(); checks.redis = true; }  catch (e) { ok = false; checks.redis = String(e?.message || e); }  try { await minio.listBuckets(); checks.minio = true; }  catch (e) { ok = false; checks.minio = String(e?.message || e); }  res.status(ok ? 200 : 503).json({ ok, checks });});
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`✅ Gonggu API running on http://0.0.0.0:${PORT}`);
 });

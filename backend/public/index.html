@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gonggu Server · Welcome</title>
+  <style>
+    :root{
+      --bg:#0b1020; --card:#121a2f; --muted:#7aa2ff; --txt:#e6ecff; --ok:#2bd576; --warn:#ffcf5a;
+      --accent:#9b7bff; --grid:rgba(255,255,255,.06);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; background:radial-gradient(1000px 600px at 20% -10%, #1a2350 0%, transparent 60%),
+                radial-gradient(1000px 600px at 120% 120%, #2a164a 0%, transparent 60%),
+                var(--bg);
+      color:var(--txt); font:16px/1.6 system-ui, -apple-system, Segoe UI, Roboto, Noto Sans KR, Apple SD Gothic Neo, sans-serif;
+      display:flex; align-items:center; justify-content:center; padding:24px;
+    }
+    .wrap{width:min(960px,100%); display:grid; gap:22px}
+    .card{
+      background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:16px; padding:22px; box-shadow:0 10px 30px rgba(0,0,0,.35);
+      backdrop-filter: blur(4px);
+    }
+    h1{margin:0 0 8px; font-size:28px; letter-spacing:.2px}
+    .sub{color:#b9c5ff; margin:0 0 8px}
+    .row{display:grid; grid-template-columns:1fr 1fr; gap:16px}
+    @media (max-width:720px){.row{grid-template-columns:1fr}}
+    .kpi{
+      display:flex; align-items:center; justify-content:space-between; padding:16px 14px;
+      background:var(--card); border:1px dashed rgba(255,255,255,.18); border-radius:12px;
+    }
+    .kpi b{font-size:20px}
+    .pill{padding:4px 10px; border-radius:999px; font-weight:600}
+    .pill.ok{background:rgba(43,213,118,.15); color:var(--ok); border:1px solid rgba(43,213,118,.45)}
+    .pill.warn{background:rgba(255,207,90,.15); color:var(--warn); border:1px solid rgba(255,207,90,.45)}
+    .grid{
+      display:grid; grid-template-columns:repeat(3,1fr); gap:14px;
+      background:
+        linear-gradient(var(--grid) 1px, transparent 1px) 0 0/100% 42px,
+        linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0/42px 100%;
+      padding:14px; border-radius:12px; border:1px solid rgba(255,255,255,.08)
+    }
+    @media (max-width:920px){.grid{grid-template-columns:1fr}}
+    .tile{
+      background:var(--card); border:1px solid rgba(255,255,255,.12); border-radius:12px; padding:16px;
+    }
+    .tile h3{margin:0 0 6px; font-size:16px}
+    .tile p{margin:0; color:#c2ccff; font-size:14px}
+    .btns{display:flex; gap:10px; flex-wrap:wrap; margin-top:14px}
+    a.button{
+      text-decoration:none; color:var(--txt); background:linear-gradient(90deg, var(--accent), var(--muted));
+      padding:10px 14px; border-radius:10px; font-weight:700; border:1px solid rgba(255,255,255,.18)
+    }
+    a.button.secondary{
+      background:transparent; border:1px solid rgba(255,255,255,.25)
+    }
+    code{background:rgba(255,255,255,.08); padding:2px 6px; border-radius:6px}
+    footer{opacity:.75; font-size:13px; text-align:center}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="card">
+      <h1>🚀 Gonggu API 서버</h1>
+      <p class="sub">도커 컴포즈 스택(backend, db, redis, minio) — <code>http://HOST:3000</code></p>
+      <div class="row">
+        <div class="kpi"><b>상태</b><span class="pill ok">Running</span></div>
+        <div class="kpi"><b>포트</b><span class="pill">3000/TCP</span></div>
+      </div>
+      <div class="btns">
+        <a class="button" href="/healthz" target="_blank">/healthz</a>
+        <a class="button" href="/readyz" target="_blank">/readyz</a>
+        <a class="button secondary" href="http://uconcreative.ddns.net:3000" target="_blank">외부 접속 테스트</a>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2 style="margin:0 0 10px">빠른 링크</h2>
+      <div class="grid">
+        <div class="tile">
+          <h3>PostgreSQL</h3>
+          <p>호스트 <code>db:5432</code> / DB <code>gonggu</code></p>
+        </div>
+        <div class="tile">
+          <h3>Redis</h3>
+          <p>호스트 <code>redis:6379</code> / <code>PING → PONG</code></p>
+        </div>
+        <div class="tile">
+          <h3>MinIO</h3>
+          <p>콘솔 <code>http://HOST:9001</code> · API <code>9000</code></p>
+        </div>
+      </div>
+      <div class="btns">
+        <a class="button secondary" href="http://localhost:9001" target="_blank">MinIO 콘솔</a>
+      </div>
+    </section>
+
+    <footer>© UCONCREATIVE · Gonggu Server</footer>
+  </main>
+</body>
+</html>

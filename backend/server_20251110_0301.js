@@ -1,6 +1,7 @@
 // ------------------------------------------------------
 // Gonggu Server - Express Entry
 // Env-based CORS (Hybrid Preflight) + Flush Logs + Helmet
+// Date: 2025-11-10
 // ------------------------------------------------------
 
 import express from "express";
@@ -10,21 +11,12 @@ import presignRouter from "./presignRouter.js";
 import authRouter from "./authRouter.js";
 
 const app = express();
-// ✅ 헬스 체크
-app.use("/healthz", (req,res,next)=>{
-  res.header("Access-Control-Allow-Origin","https://uconcreative.ddns.net");
-  res.header("Vary","Origin");
-  next();
-});
-app.get("/healthz", (_req, res) => res.send("OK"));
-
-app.use(express.static('/app/public'));
 
 // ✅ 환경 감지
 const ENV = process.env.NODE_ENV || "development";
 
 // ✅ ALLOWED_ORIGINS: 쉼표로 구분된 오리진 목록
-// 예) http://localhost:5173,https://uconcreative.ddns.net
+//   예) http://localhost:5173,https://uconcreative.ddns.net
 const parseOrigins = (val) =>
   (val || "")
     .split(",")
@@ -39,7 +31,7 @@ const fallbackDev = [
   "http://127.0.0.1:3000",
 ];
 
-// ENV=production에서 ALLOWED_ORIGINS가 비면 빈 리스트(차단)
+// ENV=production에서 ALLOWED_ORIGINS가 비었다면 빈 리스트(차단)
 const whitelist =
   dynamic.length > 0
     ? dynamic
@@ -55,46 +47,42 @@ app.use((req, res, next) => {
   if (allowed) {
     res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader("Access-Control-Allow-Credentials", "true");
-    // 프록시/캐시 환경 대비
-    const existingVary = res.getHeader("Vary");
-    res.setHeader("Vary", existingVary ? `${existingVary}, Origin` : "Origin");
+    res.setHeader("Vary", "Origin");
   }
 
   if (req.method === "OPTIONS") {
+    // 프리플라이트 사양 충족 (브라우저가 요청한 헤더/메서드 반영)
     const reqMethod = req.headers["access-control-request-method"];
     const reqHeaders =
       req.headers["access-control-request-headers"] || "Content-Type, Authorization";
 
     if (allowed) {
-      if (reqMethod) res.setHeader("Access-Control-Allow-Methods", String(reqMethod));
+      if (reqMethod) res.setHeader("Access-Control-Allow-Methods", reqMethod);
       res.setHeader("Access-Control-Allow-Headers", String(reqHeaders));
-      res.setHeader("Access-Control-Max-Age", "600");
     }
-    // 허용 여부와 무관하게 서버 에러 없이 204로 응답 (브라우저가 CORS 정책으로 판단)
+    // 허용되든 아니든 서버 에러 없이 204로 응답 (브라우저가 CORS로 판단)
     return res.sendStatus(204);
   }
 
   return next();
 });
 
-// ✅ 보안 헤더 (프리플라이트 처리 이후 적용)
+// ✅ 보안 헤더 (프리플라이트보다 뒤에서 동작)
 app.use(helmet());
 
 // ✅ JSON 파서
 app.use(express.json());
 
-// ✅ cors 패키지 (일반 요청용). 비허용은 서버에러가 아니라 CORS 차단.
+// ✅ cors 패키지(런타임 요청용). 비허용은 서버 에러 대신 단순 차단.
 const corsOptions = {
   origin(origin, cb) {
     if (!origin) return cb(null, true); // 서버-서버/CLI 허용
     const ok = whitelist.includes(origin);
-    return cb(null, ok); // true 허용, false 차단(브라우저에서 막힘)
+    return cb(null, ok); // true 허용, false면 브라우저에서 CORS 차단
   },
   credentials: true,
 };
 app.use(cors(corsOptions));
-// 안전망: 명시적 프리플라이트 핸들러
-app.options("*", cors(corsOptions));
 
 // ✅ 상태 로그 (즉시 flush)
 const log = (m) => process.stdout.write(m + "\n");
@@ -103,14 +91,15 @@ log(`🌐 MODE: ${ENV}`);
 log(`🔐 CORS whitelist (${whitelist.length}): ${whitelist.join(", ") || "(empty)"}`);
 log("------------------------------------------------------");
 
+// ✅ 헬스 체크
+app.get("/healthz", (_req, res) => res.send("OK"));
+
 // ✅ 라우터
 app.use(authRouter);
 app.use(presignRouter);
 
 // ✅ 서버 실행
 const PORT = process.env.PORT || 3000;
-app.get('/', (_req,res)=>res.sendFile('/app/public/index.html'));
-app.get('/readyz', async (_req, res) => {  const checks = {}; let ok = true;  try { await pgClient.query('SELECT 1'); checks.postgres = true; }  catch (e) { ok = false; checks.postgres = String(e?.message || e); }  try { await redis.ping(); checks.redis = true; }  catch (e) { ok = false; checks.redis = String(e?.message || e); }  try { await minio.listBuckets(); checks.minio = true; }  catch (e) { ok = false; checks.minio = String(e?.message || e); }  res.status(ok ? 200 : 503).json({ ok, checks });});
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`✅ Gonggu API running on http://0.0.0.0:${PORT}`);
 });

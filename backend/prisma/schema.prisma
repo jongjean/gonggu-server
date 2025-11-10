@@ -19,21 +19,18 @@ model User {
 model Tool {
   id        Int      @id @default(autoincrement())
   name      String
-  imageKey  String?
-  ownerId   Int
-  owner     User     @relation(fields: [ownerId], references: [id])
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
   rentals   Rental[]
   createdAt DateTime @default(now())
 }
 
 model Rental {
-  id         Int      @id @default(autoincrement())
+  id         Int       @id @default(autoincrement())
   toolId     Int
   userId     Int
-  status     String   @default("rented") // rented | returned
-  rentedAt   DateTime @default(now())
+  rentedAt   DateTime  @default(now())
   returnedAt DateTime?
-
-  tool       Tool     @relation(fields: [toolId], references: [id])
-  user       User     @relation(fields: [userId], references: [id])
+  tool       Tool      @relation(fields: [toolId], references: [id])
+  user       User      @relation(fields: [userId], references: [id])
 }

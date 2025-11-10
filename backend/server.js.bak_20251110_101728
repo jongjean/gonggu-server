@@ -11,11 +11,6 @@ import authRouter from "./authRouter.js";
 
 const app = express();
 // ✅ 헬스 체크
-app.use("/healthz", (req,res,next)=>{
-  res.header("Access-Control-Allow-Origin","https://uconcreative.ddns.net");
-  res.header("Vary","Origin");
-  next();
-});
 app.get("/healthz", (_req, res) => res.send("OK"));
 
 app.use(express.static('/app/public'));

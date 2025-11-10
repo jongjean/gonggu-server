@@ -1,0 +1,14 @@
+uconcreative.ddns.net {
+  # API → 백엔드 컨테이너(:3000)
+  reverse_proxy http://127.0.0.1:3000
+
+  @health path /healthz /readyz
+  header @health {
+    Cache-Control "no-store"
+  }
+
+  # (선택) MinIO 콘솔을 서브패스로 노출하고 싶다면 주석 해제
+  # handle_path /minio/* {
+  #   reverse_proxy http://127.0.0.1:9001
+  # }
+}

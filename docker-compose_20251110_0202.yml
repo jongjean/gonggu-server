@@ -7,15 +7,11 @@ services:
       redis:
         condition: service_healthy
       minio:
-        condition: service_started
+        condition: service_started   # MinIO는 healthcheck 제거
     env_file:
       - ./backend/.env
     environment:
-      NODE_ENV: "production"
-      ALLOWED_ORIGINS: "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000,https://uconcreative.ddns.net"
-      MINIO_PUBLIC_URL: "http://minio:9000"        # ← 핵심
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+      NODE_ENV: production
     ports:
       - "3000:3000"
     restart: unless-stopped
@@ -56,6 +52,7 @@ services:
     ports:
       - "9000:9000"
       - "9001:9001"
+    # healthcheck 없음
 
   redis:
     image: redis:7
